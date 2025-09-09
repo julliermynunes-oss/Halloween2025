@@ -812,6 +812,7 @@
             voterVotes = {};
             hideVoterModal();
             updateUI();
+            renderCostumes(); // Re-renderizar para atualizar os botões
             showMessage(`Bem-vindo, ${voterName}! Você pode votar em até 3 fantasias.`, 'success');
         }
 
@@ -1084,6 +1085,11 @@
                 authSection.style.display = 'block';
                 voterStatus.style.display = 'none';
                 adminPanel.style.display = 'none';
+            }
+            
+            // Re-renderizar fantasias para atualizar botões de voto
+            if (costumes.length > 0) {
+                renderCostumes();
             }
         }
 
