@@ -886,7 +886,7 @@
             showMessage('Logout realizado!', 'info');
         }
 
-        function confirmVoter() {
+        async function confirmVoter() {
             const voterName = document.getElementById('voter-name').value.trim();
             
             if (!voterName) {
@@ -894,12 +894,43 @@
                 return;
             }
 
-            currentVoter = voterName;
-            voterVotes = {};
-            hideVoterModal();
-            updateUI();
-            renderCostumes(); // Re-renderizar para atualizar os botões
-            showMessage(`Bem-vindo, ${voterName}! Você pode votar em até 3 fantasias.`, 'success');
+            try {
+                // Verificar se a pessoa já votou
+                const voterDoc = await db.collection('voters').doc(voterName).get();
+                
+                if (voterDoc.exists) {
+                    const voterData = voterDoc.data();
+                    if (voterData.votes && voterData.votes.length > 0) {
+                        showMessage(`Você já votou! Você votou em ${voterData.votes.length} fantasia${voterData.votes.length > 1 ? 's' : ''}. Não é possível votar novamente.`, 'error');
+                        hideVoterModal();
+                        return;
+                    }
+                }
+
+                currentVoter = voterName;
+                
+                // Carregar votos existentes se houver
+                if (voterDoc.exists) {
+                    const voterData = voterDoc.data();
+                    voterVotes[currentVoter] = voterData.votes || [];
+                } else {
+                    voterVotes = {};
+                }
+                
+                hideVoterModal();
+                updateUI();
+                renderCostumes(); // Re-renderizar para atualizar os botões
+                
+                const votesUsed = voterVotes[currentVoter] ? voterVotes[currentVoter].length : 0;
+                if (votesUsed > 0) {
+                    showMessage(`Bem-vindo de volta, ${voterName}! Você já votou em ${votesUsed} fantasia${votesUsed > 1 ? 's' : ''}.`, 'info');
+                } else {
+                    showMessage(`Bem-vindo, ${voterName}! Você pode votar em até 3 fantasias.`, 'success');
+                }
+            } catch (error) {
+                console.error('Erro ao verificar votante:', error);
+                showMessage('Erro ao verificar dados. Tente novamente.', 'error');
+            }
         }
 
         function hideVoterModal() {
@@ -960,13 +991,20 @@
         }
 
         async function clearVotes() {
-            if (confirm('Tem certeza que deseja limpar todos os votos? As fantasias serão mantidas, mas todos os votos serão zerados.')) {
+            if (confirm('Tem certeza que deseja limpar todos os votos? As fantasias serão mantidas, mas todos os votos serão zerados e as pessoas poderão votar novamente.')) {
                 try {
-                    const snapshot = await db.collection('costumes').get();
+                    // Limpar votos das fantasias
+                    const costumesSnapshot = await db.collection('costumes').get();
                     const batch = db.batch();
                     
-                    snapshot.docs.forEach(doc => {
+                    costumesSnapshot.docs.forEach(doc => {
                         batch.update(doc.ref, { votes: 0 });
+                    });
+                    
+                    // Limpar dados dos votantes
+                    const votersSnapshot = await db.collection('voters').get();
+                    votersSnapshot.docs.forEach(doc => {
+                        batch.delete(doc.ref);
                     });
                     
                     await batch.commit();
@@ -974,7 +1012,7 @@
                     // Limpar votos locais também
                     voterVotes = {};
                     
-                    showMessage('Todos os votos foram limpos! As fantasias foram mantidas.', 'success');
+                    showMessage('Todos os votos foram limpos! As fantasias foram mantidas e as pessoas podem votar novamente.', 'success');
                     loadCostumes();
                 } catch (error) {
                     console.error('Erro ao limpar votos:', error);
@@ -984,21 +1022,32 @@
         }
 
         async function clearAll() {
-            if (confirm('Tem certeza que deseja limpar todas as fantasias? Esta ação não pode ser desfeita!')) {
+            if (confirm('Tem certeza que deseja limpar todas as fantasias e votos? Esta ação não pode ser desfeita!')) {
                 try {
-                    const snapshot = await db.collection('costumes').get();
+                    // Limpar fantasias
+                    const costumesSnapshot = await db.collection('costumes').get();
                     const batch = db.batch();
                     
-                    snapshot.docs.forEach(doc => {
+                    costumesSnapshot.docs.forEach(doc => {
+                        batch.delete(doc.ref);
+                    });
+                    
+                    // Limpar dados dos votantes
+                    const votersSnapshot = await db.collection('voters').get();
+                    votersSnapshot.docs.forEach(doc => {
                         batch.delete(doc.ref);
                     });
                     
                     await batch.commit();
-                    showMessage('Todas as fantasias foram removidas!', 'success');
+                    
+                    // Limpar dados locais
+                    voterVotes = {};
+                    
+                    showMessage('Todas as fantasias e votos foram removidos!', 'success');
                     loadCostumes();
                 } catch (error) {
-                    console.error('Erro ao limpar fantasias:', error);
-                    showMessage('Erro ao limpar fantasias. Tente novamente.', 'error');
+                    console.error('Erro ao limpar tudo:', error);
+                    showMessage('Erro ao limpar dados. Tente novamente.', 'error');
                 }
             }
         }
@@ -1161,6 +1210,13 @@
                     voterVotes[currentVoter] = [];
                 }
                 voterVotes[currentVoter].push(costumeId);
+
+                // Salvar votos do votante no Firestore para persistência
+                await db.collection('voters').doc(currentVoter).set({
+                    name: currentVoter,
+                    votes: voterVotes[currentVoter],
+                    votedAt: firebase.firestore.FieldValue.serverTimestamp()
+                }, { merge: true });
 
                 // Atualizar interface imediatamente
                 renderCostumes();
