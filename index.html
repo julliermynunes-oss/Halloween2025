@@ -549,6 +549,17 @@
             100% { transform: rotate(360deg); }
         }
 
+        @keyframes confettiFall {
+            0% {
+                transform: translateY(-100vh) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(100vh) rotate(720deg);
+                opacity: 0;
+            }
+        }
+
         @media (max-width: 768px) {
             .container {
                 padding: 1rem;
@@ -645,9 +656,6 @@
             <img id="modal-image" class="modal-image" src="" alt="">
             <div class="modal-info">
                 <div id="modal-description" style="margin-bottom: 15px; font-size: 1rem; line-height: 1.5; color: rgba(255, 255, 255, 0.9);"></div>
-                <div class="modal-votes">
-                    Votos: <span id="modal-votes">0</span>
-                </div>
                 <div class="modal-instructions">
                     Clique na imagem para ampliar • Clique fora para fechar
                 </div>
@@ -958,8 +966,9 @@
                 const votesUsed = currentVoter ? (voterVotes[currentVoter] || []).length : 0;
                 const votesRemaining = 3 - votesUsed;
                 
+                
                 let buttonState = '';
-                let buttonText = `👍 Votar (${costume.votes})`;
+                let buttonText = '👍 Votar';
                 
                 if (!currentVoter) {
                     buttonState = 'disabled';
@@ -980,7 +989,6 @@
                     <div class="costume-info">
                         <h3 class="costume-name">${costume.name}${isOwnCostume ? ' <span style="color: var(--accent-orange); font-size: 0.8em;">(Sua fantasia)</span>' : ''}</h3>
                         ${costume.description ? `<p class="costume-description">${costume.description}</p>` : ''}
-                        <p class="vote-count">Votos: <span id="votes-${costume.id}">${costume.votes}</span></p>
                         ${currentVoter ? `<p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 0.5rem;">Votos restantes: ${votesRemaining}</p>` : ''}
                         <button class="btn-vote" data-id="${costume.id}" ${buttonState}>${buttonText}</button>
                         ${isAdminMode ? `<button class="btn btn-danger" onclick="deleteCostume('${costume.id}')" style="margin-top: 0.5rem; width: 100%;">🗑️ Excluir</button>` : ''}
@@ -1107,7 +1115,7 @@
             document.getElementById('modal-image').src = costume.imageUrl;
             document.getElementById('modal-title').textContent = costume.name;
             document.getElementById('modal-description').textContent = costume.description || '';
-            document.getElementById('modal-votes').textContent = costume.votes;
+            // Removido: exibição de votos para evitar viés
             imageModal.classList.add('show');
         }
 
@@ -1134,22 +1142,26 @@
             const podiumContainer = document.getElementById('podium-container');
             podiumContainer.innerHTML = '';
 
-            // Criar pódio com animação dramática
+            // Criar pódio com animação dramática e sons
             setTimeout(() => {
                 if (sortedCostumes[2]) {
+                    playDrumSound();
                     createPodiumPlace(sortedCostumes[2], 'third', '🥉');
                 }
             }, 1000);
 
             setTimeout(() => {
                 if (sortedCostumes[1]) {
+                    playDrumSound();
                     createPodiumPlace(sortedCostumes[1], 'second', '🥈');
                 }
             }, 3000);
 
             setTimeout(() => {
                 if (sortedCostumes[0]) {
+                    playVictorySound();
                     createPodiumPlace(sortedCostumes[0], 'first', '🥇');
+                    createConfetti();
                 }
             }, 5000);
         }
@@ -1217,6 +1229,92 @@
             setTimeout(() => {
                 messageDiv.remove();
             }, 3000);
+        }
+
+        // Funções de som e efeitos
+        function playDrumSound() {
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.setValueAtTime(100, audioContext.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(50, audioContext.currentTime + 0.3);
+                
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.3);
+            } catch (e) {
+                console.log('Erro ao reproduzir som:', e);
+            }
+        }
+
+        function playVictorySound() {
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                // Melodia de vitória
+                const frequencies = [523, 659, 784, 1047]; // C, E, G, C
+                frequencies.forEach((freq, index) => {
+                    oscillator.frequency.setValueAtTime(freq, audioContext.currentTime + index * 0.2);
+                });
+                
+                gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.8);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.8);
+            } catch (e) {
+                console.log('Erro ao reproduzir som de vitória:', e);
+            }
+        }
+
+        function createConfetti() {
+            const confettiContainer = document.createElement('div');
+            confettiContainer.style.position = 'fixed';
+            confettiContainer.style.top = '0';
+            confettiContainer.style.left = '0';
+            confettiContainer.style.width = '100%';
+            confettiContainer.style.height = '100%';
+            confettiContainer.style.pointerEvents = 'none';
+            confettiContainer.style.zIndex = '9999';
+            
+            document.body.appendChild(confettiContainer);
+            
+            // Criar confetes
+            for (let i = 0; i < 100; i++) {
+                setTimeout(() => {
+                    const confetti = document.createElement('div');
+                    confetti.style.position = 'absolute';
+                    confetti.style.width = '10px';
+                    confetti.style.height = '10px';
+                    confetti.style.backgroundColor = ['#ff6b35', '#9d4edd', '#06d6a0', '#ffd700', '#ff4757'][Math.floor(Math.random() * 5)];
+                    confetti.style.left = Math.random() * 100 + '%';
+                    confetti.style.top = '-10px';
+                    confetti.style.borderRadius = '50%';
+                    confetti.style.animation = `confettiFall ${2 + Math.random() * 3}s linear forwards`;
+                    
+                    confettiContainer.appendChild(confetti);
+                    
+                    setTimeout(() => {
+                        confetti.remove();
+                    }, 5000);
+                }, i * 50);
+            }
+            
+            setTimeout(() => {
+                confettiContainer.remove();
+            }, 8000);
         }
     </script>
 </body>
