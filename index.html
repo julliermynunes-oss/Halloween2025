@@ -633,6 +633,21 @@
             }
         }
 
+        @keyframes spotlightPulse {
+            0% {
+                opacity: 0;
+                transform: scale(0.5);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1.1);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(1);
+            }
+        }
+
         @media (max-width: 768px) {
             .container {
                 padding: 1rem;
@@ -1311,33 +1326,87 @@
             const podiumContainer = document.getElementById('podium-container');
             podiumContainer.innerHTML = '';
 
-            // Criar pódio com animação dramática e sons
-            setTimeout(() => {
+            // Criar botões de revelação
+            const revealContainer = document.createElement('div');
+            revealContainer.style.textAlign = 'center';
+            revealContainer.style.marginBottom = '2rem';
+            
+            revealContainer.innerHTML = `
+                <h2 style="color: var(--text-primary); margin-bottom: 2rem; font-size: 2rem;">
+                    🎭 REVELAÇÃO DOS VENCEDORES 🎭
+                </h2>
+                <p style="color: var(--text-secondary); margin-bottom: 2rem; font-size: 1.2rem;">
+                    Clique nos botões para revelar cada posição!
+                </p>
+                <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
+                    <button class="btn btn-secondary" id="reveal-third-btn" style="min-width: 200px;">
+                        🥉 Revelar 3º Lugar
+                    </button>
+                    <button class="btn btn-secondary" id="reveal-second-btn" style="min-width: 200px;">
+                        🥈 Revelar 2º Lugar
+                    </button>
+                    <button class="btn" id="reveal-first-btn" style="min-width: 200px;">
+                        🥇 Revelar 1º Lugar
+                    </button>
+                </div>
+            `;
+            
+            podiumContainer.appendChild(revealContainer);
+
+            // Adicionar event listeners para os botões
+            document.getElementById('reveal-third-btn').addEventListener('click', () => {
                 if (sortedCostumes[2]) {
                     playDrumSound();
+                    createSpotlightEffect();
                     createPodiumPlace(sortedCostumes[2], 'third', '🥉');
+                    document.getElementById('reveal-third-btn').style.display = 'none';
                 }
-            }, 1000);
+            });
 
-            setTimeout(() => {
+            document.getElementById('reveal-second-btn').addEventListener('click', () => {
                 if (sortedCostumes[1]) {
                     playDrumSound();
+                    createSpotlightEffect();
                     createPodiumPlace(sortedCostumes[1], 'second', '🥈');
+                    document.getElementById('reveal-second-btn').style.display = 'none';
                 }
-            }, 3000);
+            });
 
-            setTimeout(() => {
+            document.getElementById('reveal-first-btn').addEventListener('click', () => {
                 if (sortedCostumes[0]) {
                     playVictorySound();
+                    createSpotlightEffect();
                     createPodiumPlace(sortedCostumes[0], 'first', '🥇');
                     createConfetti();
+                    document.getElementById('reveal-first-btn').style.display = 'none';
+                    
+                    // Mostrar mensagem final
+                    setTimeout(() => {
+                        const finalMessage = document.createElement('div');
+                        finalMessage.style.textAlign = 'center';
+                        finalMessage.style.marginTop = '2rem';
+                        finalMessage.style.padding = '1rem';
+                        finalMessage.style.background = 'linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 107, 53, 0.2))';
+                        finalMessage.style.borderRadius = '15px';
+                        finalMessage.style.border = '2px solid #ffd700';
+                        finalMessage.innerHTML = `
+                            <h3 style="color: #ffd700; margin-bottom: 0.5rem;">🏆 PARABÉNS AOS VENCEDORES! 🏆</h3>
+                            <p style="color: var(--text-primary); font-size: 1.1rem;">
+                                Obrigado a todos por participarem da votação de Halloween!
+                            </p>
+                        `;
+                        podiumContainer.appendChild(finalMessage);
+                    }, 2000);
                 }
-            }, 5000);
+            });
         }
 
         function createPodiumPlace(costume, position, medal) {
             const podiumPlace = document.createElement('div');
             podiumPlace.className = 'podium-place';
+            podiumPlace.style.opacity = '0';
+            podiumPlace.style.transform = 'scale(0.5) translateY(50px)';
+            podiumPlace.style.transition = 'all 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55)';
             
             podiumPlace.innerHTML = `
                 <div class="podium-stand ${position}">
@@ -1349,6 +1418,12 @@
             `;
             
             document.getElementById('podium-container').appendChild(podiumPlace);
+            
+            // Animar entrada
+            setTimeout(() => {
+                podiumPlace.style.opacity = '1';
+                podiumPlace.style.transform = 'scale(1) translateY(0)';
+            }, 100);
         }
 
         function shareResults() {
@@ -1476,6 +1551,25 @@
             } catch (e) {
                 console.log('Erro ao reproduzir som de vitória:', e);
             }
+        }
+
+        function createSpotlightEffect() {
+            const spotlight = document.createElement('div');
+            spotlight.style.position = 'fixed';
+            spotlight.style.top = '0';
+            spotlight.style.left = '0';
+            spotlight.style.width = '100%';
+            spotlight.style.height = '100%';
+            spotlight.style.background = 'radial-gradient(circle at center, transparent 0%, rgba(0, 0, 0, 0.8) 70%)';
+            spotlight.style.pointerEvents = 'none';
+            spotlight.style.zIndex = '9998';
+            spotlight.style.animation = 'spotlightPulse 1s ease-out';
+            
+            document.body.appendChild(spotlight);
+            
+            setTimeout(() => {
+                spotlight.remove();
+            }, 1000);
         }
 
         function createConfetti() {
