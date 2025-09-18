@@ -139,6 +139,104 @@
             display: block;
         }
 
+        .general-results {
+            background: var(--secondary-bg);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-top: 2rem;
+            border: 1px solid var(--border-color);
+            display: none;
+        }
+
+        .general-results.show {
+            display: block;
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .results-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--accent-orange);
+            margin: 0;
+        }
+
+        .results-list {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .result-item {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+        }
+
+        .result-item:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
+        }
+
+        .result-rank {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--accent-orange);
+            min-width: 40px;
+            text-align: center;
+        }
+
+        .result-image {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 8px;
+            border: 2px solid var(--border-color);
+        }
+
+        .result-info {
+            flex: 1;
+        }
+
+        .result-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+        }
+
+        .result-description {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .result-votes {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--accent-green);
+            background: rgba(6, 214, 160, 0.1);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            border: 1px solid var(--accent-green);
+        }
+
+        .no-results {
+            text-align: center;
+            color: var(--text-secondary);
+            font-style: italic;
+            padding: 2rem;
+        }
+
         .form-group {
             margin-bottom: 1.5rem;
         }
@@ -723,9 +821,21 @@
             <div class="admin-buttons">
                 <button class="btn" id="add-costume-btn">➕ Adicionar Fantasia</button>
                 <button class="btn btn-secondary" id="show-results-btn">🏆 Ver Resultados</button>
+                <button class="btn btn-secondary" id="toggle-general-results-btn">📊 Resultados Gerais</button>
                 <button class="btn btn-danger" id="clear-votes-btn">🗳️ Limpar Votos</button>
                 <button class="btn btn-danger" id="clear-all-btn">🗑️ Limpar Tudo</button>
                 <button class="btn btn-danger" id="logout-admin-btn">🚪 Sair do Admin</button>
+            </div>
+
+            <!-- Seção de Resultados Gerais -->
+            <div class="general-results" id="general-results">
+                <div class="results-header">
+                    <h3 class="results-title">📊 Resultados Gerais da Votação</h3>
+                    <button class="btn btn-secondary" id="refresh-results-btn" style="padding: 0.5rem 1rem; font-size: 0.9rem;">🔄 Atualizar</button>
+                </div>
+                <div class="results-list" id="results-list">
+                    <!-- Os resultados serão inseridos aqui via JavaScript -->
+                </div>
             </div>
         </div>
 
@@ -832,6 +942,8 @@
         const imageModal = document.getElementById('image-modal');
         const voterModal = document.getElementById('voter-modal');
         const resultsScreen = document.getElementById('results-screen');
+        const generalResults = document.getElementById('general-results');
+        const resultsList = document.getElementById('results-list');
 
         // Inicialização
         document.addEventListener('DOMContentLoaded', function() {
@@ -849,6 +961,8 @@
             // Admin
             document.getElementById('add-costume-btn').addEventListener('click', addCostume);
             document.getElementById('show-results-btn').addEventListener('click', showResults);
+            document.getElementById('toggle-general-results-btn').addEventListener('click', toggleGeneralResults);
+            document.getElementById('refresh-results-btn').addEventListener('click', refreshGeneralResults);
             document.getElementById('clear-votes-btn').addEventListener('click', clearVotes);
             document.getElementById('clear-all-btn').addEventListener('click', clearAll);
 
@@ -1086,6 +1200,10 @@
                 });
                 console.log('Fantasias carregadas:', costumes);
                 renderCostumes();
+                // Atualizar resultados gerais se estiverem visíveis
+                if (generalResults.classList.contains('show')) {
+                    refreshGeneralResults();
+                }
             }, error => {
                 console.error('Erro ao carregar fantasias do Firestore:', error);
                 // Fallback: carregar do localStorage
@@ -1273,10 +1391,16 @@
                 authSection.style.display = 'none';
                 adminPanel.style.display = 'none';
                 voterStatus.classList.add('show');
+                // Ocultar resultados gerais quando sair do modo admin
+                generalResults.classList.remove('show');
+                document.getElementById('toggle-general-results-btn').textContent = '📊 Resultados Gerais';
             } else {
                 authSection.style.display = 'block';
                 voterStatus.style.display = 'none';
                 adminPanel.style.display = 'none';
+                // Ocultar resultados gerais quando sair do modo admin
+                generalResults.classList.remove('show');
+                document.getElementById('toggle-general-results-btn').textContent = '📊 Resultados Gerais';
             }
             
             // Re-renderizar fantasias para atualizar botões de voto
@@ -1315,6 +1439,55 @@
 
             resultsScreen.classList.add('show');
             createPodium();
+        }
+
+        function toggleGeneralResults() {
+            if (generalResults.classList.contains('show')) {
+                generalResults.classList.remove('show');
+                document.getElementById('toggle-general-results-btn').textContent = '📊 Resultados Gerais';
+            } else {
+                generalResults.classList.add('show');
+                document.getElementById('toggle-general-results-btn').textContent = '📊 Ocultar Resultados';
+                refreshGeneralResults();
+            }
+        }
+
+        function refreshGeneralResults() {
+            if (costumes.length === 0) {
+                resultsList.innerHTML = `
+                    <div class="no-results">
+                        <p>Nenhuma fantasia cadastrada ainda.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Ordenar fantasias por número de votos (decrescente)
+            const sortedCostumes = [...costumes].sort((a, b) => b.votes - a.votes);
+            
+            resultsList.innerHTML = '';
+            
+            sortedCostumes.forEach((costume, index) => {
+                const resultItem = document.createElement('div');
+                resultItem.className = 'result-item';
+                
+                const rank = index + 1;
+                const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `${rank}º`;
+                
+                resultItem.innerHTML = `
+                    <div class="result-rank">${medal}</div>
+                    <img src="${costume.imageUrl}" alt="${costume.name}" class="result-image" loading="lazy">
+                    <div class="result-info">
+                        <div class="result-name">${costume.name}</div>
+                        ${costume.description ? `<div class="result-description">${costume.description}</div>` : ''}
+                    </div>
+                    <div class="result-votes">
+                        ${costume.votes} voto${costume.votes !== 1 ? 's' : ''}
+                    </div>
+                `;
+                
+                resultsList.appendChild(resultItem);
+            });
         }
 
         function hideResults() {
