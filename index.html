@@ -237,6 +237,100 @@
             padding: 2rem;
         }
 
+        /* Estilos para Auditoria de Votos */
+        .audit-table-container {
+            overflow-x: auto;
+            margin-top: 1rem;
+        }
+
+        .audit-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--card-bg);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+
+        .audit-table th,
+        .audit-table td {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .audit-table th {
+            background: var(--secondary-bg);
+            color: var(--accent-orange);
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .audit-table td {
+            color: var(--text-primary);
+            font-size: 0.9rem;
+        }
+
+        .audit-table tr:hover {
+            background: rgba(255, 107, 53, 0.05);
+        }
+
+        .audit-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .vote-status {
+            padding: 0.25rem 0.5rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .vote-status.valid {
+            background: rgba(6, 214, 160, 0.2);
+            color: #06d6a0;
+            border: 1px solid #06d6a0;
+        }
+
+        .vote-status.suspicious {
+            background: rgba(255, 71, 87, 0.2);
+            color: #ff4757;
+            border: 1px solid #ff4757;
+        }
+
+        .audit-summary-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .audit-summary-item:last-child {
+            border-bottom: none;
+        }
+
+        .audit-summary-label {
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .audit-summary-value {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .audit-summary-value.warning {
+            color: #ff4757;
+        }
+
+        .audit-summary-value.success {
+            color: #06d6a0;
+        }
+
         .form-group {
             margin-bottom: 1.5rem;
         }
@@ -822,6 +916,7 @@
                 <button class="btn" id="add-costume-btn">➕ Adicionar Fantasia</button>
                 <button class="btn btn-secondary" id="show-results-btn">🏆 Ver Resultados</button>
                 <button class="btn btn-secondary" id="toggle-general-results-btn">📊 Resultados Gerais</button>
+                <button class="btn btn-secondary" id="toggle-vote-audit-btn">🔍 Auditoria de Votos</button>
                 <button class="btn btn-danger" id="clear-votes-btn">🗳️ Limpar Votos</button>
                 <button class="btn btn-danger" id="clear-all-btn">🗑️ Limpar Tudo</button>
                 <button class="btn btn-danger" id="logout-admin-btn">🚪 Sair do Admin</button>
@@ -835,6 +930,23 @@
                 </div>
                 <div class="results-list" id="results-list">
                     <!-- Os resultados serão inseridos aqui via JavaScript -->
+                </div>
+            </div>
+
+            <!-- Seção de Auditoria de Votos -->
+            <div class="general-results" id="vote-audit">
+                <div class="results-header">
+                    <h3 class="results-title">🔍 Auditoria de Votos</h3>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn btn-secondary" id="refresh-audit-btn" style="padding: 0.5rem 1rem; font-size: 0.9rem;">🔄 Atualizar</button>
+                        <button class="btn btn-secondary" id="export-audit-btn" style="padding: 0.5rem 1rem; font-size: 0.9rem;">📤 Exportar</button>
+                    </div>
+                </div>
+                <div id="audit-summary" style="margin-bottom: 1.5rem; padding: 1rem; background: var(--secondary-bg); border-radius: 10px; border: 1px solid var(--border-color);">
+                    <!-- Resumo da auditoria será inserido aqui -->
+                </div>
+                <div class="audit-table-container" id="audit-table-container">
+                    <!-- Tabela de votos será inserida aqui -->
                 </div>
             </div>
         </div>
@@ -944,6 +1056,9 @@
         const resultsScreen = document.getElementById('results-screen');
         const generalResults = document.getElementById('general-results');
         const resultsList = document.getElementById('results-list');
+        const voteAudit = document.getElementById('vote-audit');
+        const auditSummary = document.getElementById('audit-summary');
+        const auditTableContainer = document.getElementById('audit-table-container');
 
         // Inicialização
         document.addEventListener('DOMContentLoaded', function() {
@@ -963,6 +1078,9 @@
             document.getElementById('show-results-btn').addEventListener('click', showResults);
             document.getElementById('toggle-general-results-btn').addEventListener('click', toggleGeneralResults);
             document.getElementById('refresh-results-btn').addEventListener('click', refreshGeneralResults);
+            document.getElementById('toggle-vote-audit-btn').addEventListener('click', toggleVoteAudit);
+            document.getElementById('refresh-audit-btn').addEventListener('click', refreshVoteAudit);
+            document.getElementById('export-audit-btn').addEventListener('click', exportVoteAudit);
             document.getElementById('clear-votes-btn').addEventListener('click', clearVotes);
             document.getElementById('clear-all-btn').addEventListener('click', clearAll);
 
@@ -1246,7 +1364,7 @@
                 costumeCard.className = 'costume-card';
                 
                 const hasVoted = currentVoter && voterVotes[currentVoter] && voterVotes[currentVoter].includes(costume.id);
-                const isOwnCostume = currentVoter && costume.name.toLowerCase().includes(currentVoter.toLowerCase());
+                const isOwnCostume = currentVoter && checkSuspiciousVote(currentVoter, costume.name);
                 const votesUsed = currentVoter ? (voterVotes[currentVoter] || []).length : 0;
                 const votesRemaining = 3 - votesUsed;
                 
@@ -1314,7 +1432,7 @@
             if (!costume) return;
 
             const hasVoted = voterVotes[currentVoter] && voterVotes[currentVoter].includes(costumeId);
-            const isOwnCostume = costume.name.toLowerCase().includes(currentVoter.toLowerCase());
+            const isOwnCostume = checkSuspiciousVote(currentVoter, costume.name);
             const votesUsed = (voterVotes[currentVoter] || []).length;
 
             if (hasVoted) {
@@ -1391,16 +1509,20 @@
                 authSection.style.display = 'none';
                 adminPanel.style.display = 'none';
                 voterStatus.classList.add('show');
-                // Ocultar resultados gerais quando sair do modo admin
+                // Ocultar seções administrativas quando sair do modo admin
                 generalResults.classList.remove('show');
+                voteAudit.classList.remove('show');
                 document.getElementById('toggle-general-results-btn').textContent = '📊 Resultados Gerais';
+                document.getElementById('toggle-vote-audit-btn').textContent = '🔍 Auditoria de Votos';
             } else {
                 authSection.style.display = 'block';
                 voterStatus.style.display = 'none';
                 adminPanel.style.display = 'none';
-                // Ocultar resultados gerais quando sair do modo admin
+                // Ocultar seções administrativas quando sair do modo admin
                 generalResults.classList.remove('show');
+                voteAudit.classList.remove('show');
                 document.getElementById('toggle-general-results-btn').textContent = '📊 Resultados Gerais';
+                document.getElementById('toggle-vote-audit-btn').textContent = '🔍 Auditoria de Votos';
             }
             
             // Re-renderizar fantasias para atualizar botões de voto
@@ -1628,6 +1750,258 @@
                 textArea.select();
                 document.execCommand('copy');
                 document.body.removeChild(textArea);
+            }
+        }
+
+        // Função para verificar votos suspeitos (bidirecional)
+        function checkSuspiciousVote(voterName, costumeName) {
+            const voterLower = voterName.toLowerCase().trim();
+            const costumeLower = costumeName.toLowerCase().trim();
+            
+            // Ignorar casos onde os nomes são muito curtos (evitar falsos positivos)
+            if (voterLower.length < 3 || costumeLower.length < 3) {
+                return false;
+            }
+            
+            // Caso 1: Nome da fantasia contém o nome do votante
+            // Exemplo: "Drielle" votou em "Drielle Brait" ou "Fantasia da Drielle"
+            if (costumeLower.includes(voterLower)) {
+                return true;
+            }
+            
+            // Caso 2: Nome do votante contém o nome da fantasia
+            // Exemplo: "Drielle Brait" votou em "Drielle" ou "Fantasia Drielle"
+            if (voterLower.includes(costumeLower)) {
+                return true;
+            }
+            
+            // Caso 3: Verificar palavras individuais para casos mais complexos
+            const voterWords = voterLower.split(/\s+/).filter(word => word.length > 2);
+            const costumeWords = costumeLower.split(/\s+/).filter(word => word.length > 2);
+            
+            // Se alguma palavra significativa do nome do votante estiver no nome da fantasia
+            for (const voterWord of voterWords) {
+                for (const costumeWord of costumeWords) {
+                    // Verificar se uma palavra contém a outra (mas não seja muito genérica)
+                    if ((costumeWord.includes(voterWord) || voterWord.includes(costumeWord)) && 
+                        voterWord.length >= 3 && costumeWord.length >= 3) {
+                        return true;
+                    }
+                }
+            }
+            
+            return false;
+        }
+
+        // Funções de Auditoria de Votos
+        function toggleVoteAudit() {
+            if (voteAudit.classList.contains('show')) {
+                voteAudit.classList.remove('show');
+                document.getElementById('toggle-vote-audit-btn').textContent = '🔍 Auditoria de Votos';
+            } else {
+                voteAudit.classList.add('show');
+                document.getElementById('toggle-vote-audit-btn').textContent = '🔍 Ocultar Auditoria';
+                refreshVoteAudit();
+            }
+        }
+
+        async function refreshVoteAudit() {
+            try {
+                // Carregar dados dos votantes
+                const votersSnapshot = await db.collection('voters').get();
+                const allVotes = [];
+                let suspiciousVotes = 0;
+                let totalVotes = 0;
+                let totalVoters = votersSnapshot.size;
+
+                votersSnapshot.forEach(doc => {
+                    const voterData = doc.data();
+                    const voterName = voterData.name;
+                    const votes = voterData.votes || [];
+                    
+                    votes.forEach(costumeId => {
+                        const costume = costumes.find(c => c.id === costumeId);
+                        if (costume) {
+                            // Verificação bidirecional de suspeita
+                            const isSuspicious = checkSuspiciousVote(voterName, costume.name);
+                            if (isSuspicious) suspiciousVotes++;
+                            
+                            allVotes.push({
+                                voter: voterName,
+                                costume: costume.name,
+                                costumeId: costumeId,
+                                suspicious: isSuspicious,
+                                votedAt: voterData.votedAt ? voterData.votedAt.toDate() : new Date()
+                            });
+                            totalVotes++;
+                        }
+                    });
+                });
+
+                // Ordenar votos por data (mais recentes primeiro)
+                allVotes.sort((a, b) => b.votedAt - a.votedAt);
+
+                // Atualizar resumo
+                updateAuditSummary(totalVoters, totalVotes, suspiciousVotes);
+
+                // Atualizar tabela
+                updateAuditTable(allVotes);
+
+            } catch (error) {
+                console.error('Erro ao carregar auditoria:', error);
+                showMessage('Erro ao carregar dados de auditoria.', 'error');
+            }
+        }
+
+        function updateAuditSummary(totalVoters, totalVotes, suspiciousVotes) {
+            const validVotes = totalVotes - suspiciousVotes;
+            const suspiciousPercentage = totalVotes > 0 ? ((suspiciousVotes / totalVotes) * 100).toFixed(1) : 0;
+
+            auditSummary.innerHTML = `
+                <div class="audit-summary-item">
+                    <span class="audit-summary-label">👥 Total de Votantes:</span>
+                    <span class="audit-summary-value">${totalVoters}</span>
+                </div>
+                <div class="audit-summary-item">
+                    <span class="audit-summary-label">🗳️ Total de Votos:</span>
+                    <span class="audit-summary-value">${totalVotes}</span>
+                </div>
+                <div class="audit-summary-item">
+                    <span class="audit-summary-label">✅ Votos Válidos:</span>
+                    <span class="audit-summary-value success">${validVotes}</span>
+                </div>
+                <div class="audit-summary-item">
+                    <span class="audit-summary-label">⚠️ Votos Suspeitos:</span>
+                    <span class="audit-summary-value ${suspiciousVotes > 0 ? 'warning' : 'success'}">${suspiciousVotes} (${suspiciousPercentage}%)</span>
+                </div>
+            `;
+        }
+
+        function updateAuditTable(allVotes) {
+            if (allVotes.length === 0) {
+                auditTableContainer.innerHTML = `
+                    <div class="no-results">
+                        <p>Nenhum voto registrado ainda.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const table = document.createElement('table');
+            table.className = 'audit-table';
+            
+            table.innerHTML = `
+                <thead>
+                    <tr>
+                        <th>Votante</th>
+                        <th>Fantasia Votada</th>
+                        <th>Status</th>
+                        <th>Data/Hora</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${allVotes.map(vote => `
+                        <tr>
+                            <td><strong>${vote.voter}</strong></td>
+                            <td>${vote.costume}</td>
+                            <td>
+                                <span class="vote-status ${vote.suspicious ? 'suspicious' : 'valid'}">
+                                    ${vote.suspicious ? '⚠️ Suspeito' : '✅ Válido'}
+                                </span>
+                            </td>
+                            <td>${formatDateTime(vote.votedAt)}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            `;
+
+            auditTableContainer.innerHTML = '';
+            auditTableContainer.appendChild(table);
+        }
+
+        function formatDateTime(date) {
+            if (!date) return 'N/A';
+            
+            const d = new Date(date);
+            return d.toLocaleString('pt-BR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        function exportVoteAudit() {
+            try {
+                const votersSnapshot = db.collection('voters').get().then(snapshot => {
+                    const allVotes = [];
+                    let suspiciousVotes = 0;
+                    let totalVotes = 0;
+
+                    snapshot.forEach(doc => {
+                        const voterData = doc.data();
+                        const voterName = voterData.name;
+                        const votes = voterData.votes || [];
+                        
+                        votes.forEach(costumeId => {
+                            const costume = costumes.find(c => c.id === costumeId);
+                            if (costume) {
+                                // Verificação bidirecional de suspeita
+                                const isSuspicious = checkSuspiciousVote(voterName, costume.name);
+                                if (isSuspicious) suspiciousVotes++;
+                                
+                                allVotes.push({
+                                    votante: voterName,
+                                    fantasia: costume.name,
+                                    suspeito: isSuspicious ? 'SIM' : 'NÃO',
+                                    data: voterData.votedAt ? voterData.votedAt.toDate().toLocaleString('pt-BR') : 'N/A'
+                                });
+                                totalVotes++;
+                            }
+                        });
+                    });
+
+                    // Criar CSV
+                    const headers = ['Votante', 'Fantasia Votada', 'Suspeito', 'Data/Hora'];
+                    const csvContent = [
+                        headers.join(','),
+                        ...allVotes.map(vote => [
+                            `"${vote.votante}"`,
+                            `"${vote.fantasia}"`,
+                            vote.suspeito,
+                            `"${vote.data}"`
+                        ].join(','))
+                    ].join('\n');
+
+                    // Adicionar resumo no início
+                    const summary = [
+                        'RESUMO DA AUDITORIA',
+                        `Total de Votantes,${snapshot.size}`,
+                        `Total de Votos,${totalVotes}`,
+                        `Votos Suspeitos,${suspiciousVotes}`,
+                        `Votos Válidos,${totalVotes - suspiciousVotes}`,
+                        '',
+                        'DETALHES DOS VOTOS',
+                        csvContent
+                    ].join('\n');
+
+                    // Download
+                    const blob = new Blob([summary], { type: 'text/csv;charset=utf-8;' });
+                    const link = document.createElement('a');
+                    const url = URL.createObjectURL(blob);
+                    link.setAttribute('href', url);
+                    link.setAttribute('download', `auditoria-halloween-${new Date().toISOString().split('T')[0]}.csv`);
+                    link.style.visibility = 'hidden';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+
+                    showMessage('Relatório de auditoria exportado com sucesso!', 'success');
+                });
+            } catch (error) {
+                console.error('Erro ao exportar auditoria:', error);
+                showMessage('Erro ao exportar relatório.', 'error');
             }
         }
 
